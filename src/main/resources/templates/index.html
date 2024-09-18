@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Card Search</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 2px solid black;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .error-message {
+            color: red;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Card Search</h1>
+    <form action="/search" method="post">
+        <label for="cardNumber">Enter Card Number:</label>
+        <input type="text" id="cardNumber" name="cardNumber" maxlength="19" required>
+        <button type="submit">Search</button>
+    </form>
+
+    <div class="error-message" th:if="${errorMessage}" th:text="${errorMessage}"></div>
+
+    <div class="container">
+        <h1>Card Search Results</h1>
+
+        <table th:if="${cards.size() > 0}">
+            <thead>
+            <tr>
+                <th>Bin</th>
+                <th>Alpha Code</th>
+                <th>Bank name</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="card : ${cards}">
+                <td th:text="${card.bin}"></td>
+                <td th:text="${card.alphaCode}"></td>
+                <td th:text="${card.bank}"></td>
+            </tr>
+            </tbody>
+        </table>
+
+        <p th:if="${cards.size() == 0}">No card data available.</p>
+    </div>
+</div>
+</body>
+
+<script>
+    function maskCardNumber(value) {
+        const cleaned = value.replace(/\D/g, '');
+
+        const parts = [];
+        for (let i = 0; i < cleaned.length; i += 4) {
+            parts.push(cleaned.substring(i, i + 4));
+        }
+
+        return parts.join(' ');
+    }
+
+    document.getElementById('cardNumber').addEventListener('input', function (e) {
+        const input = e.target;
+        const formattedValue = maskCardNumber(input.value);
+        input.value = formattedValue;
+    });
+</script>
+</html>

@@ -1,0 +1,56 @@
+services:
+  app:
+    image: card_service:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      master_creds: '{"username":"master", "password":"master"}'
+      replica_creds: '{"username":"replica", "password":"replica"}'
+    depends_on:
+      - master
+      - replica1
+    networks:
+      - app-network
+  master:
+    image: postgres:16.1-alpine3.19
+    container_name: logrepl_pg_master
+    ports:
+      - 5432:5432
+    volumes:
+      - ./db/logrepl_pg_master-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: master
+      POSTGRES_PASSWORD: master
+      POSTGRES_DB: card_db
+    command: |
+      postgres 
+      -c wal_level=logical
+      -c max_replication_slots=10
+      -c max_wal_senders=8
+    restart: unless-stopped
+    networks:
+      - app-network
+  replica1:
+    image: postgres:15.5-alpine3.19
+    container_name: logrepl_pg_replica1
+    ports:
+      - 5433:5432
+    volumes:
+      - ./db/logrepl_pg_replica1-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: replica
+      POSTGRES_PASSWORD: replica
+      POSTGRES_DB: card_db
+    command: |
+      postgres 
+      -c wal_level=logical
+      -c max_replication_slots=10
+      -c max_wal_senders=8
+    restart: unless-stopped
+    networks:
+      - app-network
+networks:
+  app-network:
