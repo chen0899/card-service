@@ -2,6 +2,8 @@
 
 # Define the master database and the replicas
 master_db="logrepl_pg_master"
+replica="logrepl_pg_replica1"
+
 docker exec -i "$master_db" psql -U master -d card_db -c "CREATE TABLE card_ranges(
                                                         bin        VARCHAR(6) PRIMARY KEY,
                                                         min_range  VARCHAR(19),

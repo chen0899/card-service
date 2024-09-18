@@ -10,6 +10,7 @@ import com.demo.card_service.model.CardRange;
 import com.demo.card_service.repository.CardRangeRepository;
 import com.demo.card_service.service.CardService;
 import com.demo.card_service.service.DataProcessingService;
+import com.demo.card_service.utils.ScheduledTaskUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -35,10 +36,13 @@ public class CardRangeServiceImpl implements CardService {
 
     private final CardMapper cardMapper;
 
-    public CardRangeServiceImpl(DataProcessingService dataProcessingService, CardRangeRepository repository, CardMapper cardMapper) {
+    private final ScheduledTaskUtil scheduledTaskUtil;
+
+    public CardRangeServiceImpl(DataProcessingService dataProcessingService, CardRangeRepository repository, CardMapper cardMapper, ScheduledTaskUtil scheduledTaskUtil) {
         this.dataProcessingService = dataProcessingService;
         this.repository = repository;
         this.cardMapper = cardMapper;
+        this.scheduledTaskUtil = scheduledTaskUtil;
     }
 
     @Override
@@ -59,40 +63,44 @@ public class CardRangeServiceImpl implements CardService {
         return repository.findAll(pageable);
     }
 
-    @Scheduled(cron = "0 0 * * * ?")
+    @Scheduled(cron = "0 * * * * ?")
     @Transactional
     public void updateCardBins() {
-        try {
-            List<CardRangeUpdateRequestDto> newCards = dataProcessingService.fetchData();
-            List<CardRange> existed = repository.findAll();
+        if(scheduledTaskUtil.isSchedulingEnabled()) {
+            try {
+                List<CardRangeUpdateRequestDto> newCards = dataProcessingService.fetchData();
+                List<CardRange> existed = repository.findAll();
 
-            Map<String, CardRange> existingCardBinMap = existed.stream()
-                    .collect(Collectors.toMap(CardRange::getBin, cardBin -> cardBin));
+                Map<String, CardRange> existingCardBinMap = existed.stream()
+                        .collect(Collectors.toMap(CardRange::getBin, cardBin -> cardBin));
 
-            List<CardRange> toCreate = new ArrayList<>();
-            List<CardRange> toUpdate = new ArrayList<>();
+                List<CardRange> toCreate = new ArrayList<>();
+                List<CardRange> toUpdate = new ArrayList<>();
 
-            for (CardRangeUpdateRequestDto newCardRange : newCards) {
-                CardRange existedCardRange = existingCardBinMap.remove(newCardRange.getBin());
-                CardRange newCardRangeEntity = cardMapper.toEntity(newCardRange);
-                if (existedCardRange != null) {
-                    if(!existedCardRange.equals(newCardRangeEntity)) {
-                        toUpdate.add(cardMapper.toEntity(newCardRange));
+                for (CardRangeUpdateRequestDto newCardRange : newCards) {
+                    CardRange existedCardRange = existingCardBinMap.remove(newCardRange.getBin());
+                    CardRange newCardRangeEntity = cardMapper.toEntity(newCardRange);
+                    if (existedCardRange != null) {
+                        if (!existedCardRange.equals(newCardRangeEntity)) {
+                            toUpdate.add(cardMapper.toEntity(newCardRange));
+                        }
+                    } else {
+                        toCreate.add(cardMapper.toEntity(newCardRange));
                     }
-                } else {
-                    toCreate.add(cardMapper.toEntity(newCardRange));
                 }
+
+                List<CardRange> toDelete = new ArrayList<>(existingCardBinMap.values());
+
+
+                int saved = saveInChunks(toCreate, CHUNK_SIZE);
+                int updated = saveInChunks(toUpdate, CHUNK_SIZE);
+                repository.deleteAll(toDelete);
+                log.info("Created: {} \nUpdated: {}\nDeleted: {}", saved, updated, toDelete.size());
+            } catch (Exception e) {
+                throw new CardUpdateException(String.format("Error during card updates %s", e.getMessage()));
             }
-
-            List<CardRange> toDelete = new ArrayList<>(existingCardBinMap.values());
-
-
-            int saved = saveInChunks(toCreate, CHUNK_SIZE);
-            int updated = saveInChunks(toUpdate, CHUNK_SIZE);
-            repository.deleteAll(toDelete);
-            log.info("Created: {} \nUpdated: {}\nDeleted: {}", saved, updated, toDelete.size());
-        } catch (Exception e) {
-            throw new CardUpdateException(String.format("Error during card updates %s", e.getMessage()));
+        } else {
+            log.info("Scheduling is disabled");
         }
     }
 
