@@ -67,6 +67,7 @@ public class CardRangeServiceImpl implements CardService {
     @Transactional
     public void updateCardBins() {
         if(scheduledTaskUtil.isSchedulingEnabled()) {
+            log.info("Scheduler started");
             try {
                 List<CardRangeUpdateRequestDto> newCards = dataProcessingService.fetchData();
                 List<CardRange> existed = repository.findAll();
