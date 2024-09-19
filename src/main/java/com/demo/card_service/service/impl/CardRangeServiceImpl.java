@@ -63,7 +63,7 @@ public class CardRangeServiceImpl implements CardService {
         return repository.findAll(pageable);
     }
 
-    @Scheduled(cron = "0 0 * * * ?")
+    @Scheduled(cron = "0 * * * * ?")
     @Transactional
     public void updateCardBins() {
         if(scheduledTaskUtil.isSchedulingEnabled()) {
