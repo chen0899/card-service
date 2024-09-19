@@ -54,7 +54,7 @@ public class DataSourceConfig {
 
         Map<String, String> props = new HashMap<>();
         props.put("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
-        props.put("hibernate.show_sql", "true");
+        props.put("hibernate.show_sql", "false");
         props.put("hibernate.hbm2ddl.auto", "none");
         bean.setJpaPropertyMap(props);
 
